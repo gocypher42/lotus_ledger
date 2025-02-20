@@ -1,0 +1,13 @@
+[package]
+name = "lotus_ledger"
+version = "0.1.0"
+authors = ["Olivier Guenette <olivierguenette@hotmail.com>"]
+edition = "2021"
+readme = "README.md"
+
+[dependencies]
+mongodb = "3.2.1"
+tokio = { version = "1.43.0", features = ["full"] }
+derive_more = { version = "2.0.1", features = ["from", "display"] }
+serde = "1.0.217"
+bson = "2.13.0"
