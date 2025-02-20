@@ -24,7 +24,7 @@ struct Game {
 
 impl Default for Game {
     fn default() -> Self {
-        Game {
+        Self {
             id: None,
             player1: 40,
             player2: 40,
