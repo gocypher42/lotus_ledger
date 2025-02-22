@@ -1,0 +1,26 @@
+{
+	"info": {
+		"_postman_id": "9bc72a27-363d-4839-a6e7-4ce9f4760e8e",
+		"name": "lotus_ledger",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "18188419"
+	},
+	"item": [
+		{
+			"name": "Test Request",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3030",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3030"
+				}
+			},
+			"response": []
+		}
+	]
+}
