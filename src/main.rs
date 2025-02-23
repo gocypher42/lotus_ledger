@@ -1,15 +1,19 @@
 mod error;
 
+use std::str::FromStr;
 use std::usize;
 
+use axum::extract::Path;
 use axum::extract::Query;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use axum::routing::delete;
 use axum::routing::get;
 use axum::Json;
 use axum::Router;
 use bson::oid::ObjectId;
+use bson::to_document;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
@@ -76,17 +80,14 @@ impl From<CreateGame> for Game {
     }
 }
 
-async fn get_games(
+async fn game_list(
     pagination: Query<Pagination>,
     State(state): State<AppState>,
-) -> Result<Json<Vec<Game>>, impl IntoResponse> {
+) -> Result<impl IntoResponse, StatusCode> {
     let game_collection: Collection<Game> = state.db.collection(GAME_COLLECTION_NAME);
 
     let Ok(games_cursor) = game_collection.find(doc! {}).await else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unable to find collection."),
-        ));
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
     let Ok(games): Result<Vec<Game>, _> = games_cursor
@@ -95,13 +96,10 @@ async fn get_games(
         .try_collect()
         .await
     else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unable to parse collection."),
-        ));
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
-    Ok(games.into())
+    Ok(Json(games))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -112,17 +110,14 @@ struct CreateGame {
     player4: Option<u8>,
 }
 
-async fn create_game(
+async fn game_create(
     State(state): State<AppState>,
     Json(game): Json<CreateGame>,
-) -> Result<(StatusCode, Json<Game>), (StatusCode, String)> {
+) -> Result<impl IntoResponse, StatusCode> {
     let game_collection: Collection<Game> = state.db.collection(GAME_COLLECTION_NAME);
 
     let Ok(inser_one_result) = game_collection.insert_one(Game::from(game)).await else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unable to create game."),
-        ));
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
     let Some(new_game) = game_collection
@@ -131,13 +126,73 @@ async fn create_game(
         .ok()
         .flatten()
     else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unable to create game."),
-        ));
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
     Ok((StatusCode::CREATED, Json(new_game)))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct UpdateGame {
+    player1: u8,
+    player2: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    player3: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    player4: Option<u8>,
+}
+
+async fn game_update(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(game): Json<UpdateGame>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let Ok(id) = ObjectId::from_str(id.as_str()) else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+    let game_collection: Collection<Game> = state.db.collection(GAME_COLLECTION_NAME);
+
+    let filter = doc! {"_id": id};
+
+    let Ok(t) = game_collection
+        .update_one(filter.clone(), doc! {"$set": to_document(&game).unwrap()})
+        .await
+    else {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    };
+
+    if t.matched_count == 0 {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    let Some(updated_game) = game_collection.find_one(filter).await.ok().flatten() else {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    };
+
+    Ok(Json(updated_game))
+}
+
+async fn game_delete(Path(id): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+    let Ok(id) = ObjectId::from_str(id.as_str()) else {
+        return StatusCode::NOT_FOUND;
+    };
+
+    let Ok(res) = state
+        .db
+        .collection::<Game>(GAME_COLLECTION_NAME)
+        .delete_many(doc! {
+           "_id": id
+        })
+        .await
+    else {
+        return StatusCode::INTERNAL_SERVER_ERROR;
+    };
+
+    if res.deleted_count == 0 {
+        StatusCode::NOT_FOUND
+    } else {
+        StatusCode::NO_CONTENT
+    }
 }
 
 #[tokio::main]
@@ -149,63 +204,12 @@ async fn main() -> error::Result<()> {
 
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
-        .route(
-            "/games",
-            get(get_games).post(create_game).with_state(app_state),
-        );
+        .route("/games", get(game_list).post(game_create))
+        .route("/games/{id}", delete(game_delete).put(game_update))
+        .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();
     axum::serve(listener, app).await.unwrap();
-
-    // let mut input_string = String::new();
-    //
-    // println!("Enter 'x' to quit.");
-    // while input_string.trim() != "x" {
-    //     input_string.clear();
-    //     print!(">> ");
-    //     io::stdout().flush().unwrap();
-    //     io::stdin().read_line(&mut input_string).unwrap();
-    //
-    //     let cmd_parts: Vec<&str> = input_string.split(' ').map(str::trim).collect();
-    //     let main_cmd = if cmd_parts.is_empty() {
-    //         ""
-    //     } else {
-    //         cmd_parts.first().unwrap()
-    //     };
-    //
-    //     if main_cmd == "create" {
-    //         println!("Creating a new game");
-    //         let inser_one_result = game_collection.insert_one(Game::default()).await?;
-    //         let new_game_id = inser_one_result.inserted_id;
-    //         println!(
-    //             "new game id: {:?}",
-    //             new_game_id.as_object_id().unwrap().to_string()
-    //         );
-    //     } else if main_cmd == "list" {
-    //         println!("Listing games");
-    //         let mut games_cursor = game_collection.find(doc! {}).await?;
-    //         while let Some(game) = games_cursor.try_next().await? {
-    //             println!("Game id: {}", game.id.unwrap());
-    //         }
-    //     } else if main_cmd == "delete" {
-    //         if let Some(id) = cmd_parts.get(1) {
-    //             println!("Deleting game with id \"{id}\"");
-    //             let delete_result = game_collection
-    //                 .delete_many(doc! {
-    //                    "_id": ObjectId::from_str(id).unwrap()
-    //                 })
-    //                 .await?;
-    //             println!("Deleted {} games", delete_result.deleted_count);
-    //         } else {
-    //             println!("No id given.");
-    //         }
-    //     } else if main_cmd == "delete_all" {
-    //         println!("Deleting all game");
-    //         let delete_result = game_collection.delete_many(doc! {}).await?;
-    //         println!("Deleted {} games", delete_result.deleted_count);
-    //     }
-    //     println!("---");
-    // }
 
     Ok(())
 }

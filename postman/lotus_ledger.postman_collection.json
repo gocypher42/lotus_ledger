@@ -21,6 +21,114 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "Get Games",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3030/games",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"games"
+					],
+					"query": [
+						{
+							"key": "offset",
+							"value": "3",
+							"disabled": true
+						},
+						{
+							"key": "limit",
+							"value": "20",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Game",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"player1\": 40,\r\n    \"player2\": 40\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3030/games",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"games"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Game",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3030/games/67b6988a3a96c9b4ff49944c",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"games",
+						"67b6988a3a96c9b4ff49944c"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Game",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"player1\": 40,\r\n    \"player2\": 39,\r\n    \"player3\": 40,\r\n    \"player4\": 40\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3030/games/67b6988a3a96c9b4ff49944c",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"games",
+						"67b6988a3a96c9b4ff49944c"
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }
