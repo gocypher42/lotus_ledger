@@ -12,3 +12,4 @@ derive_more = { version = "2.0.1", features = ["from", "display"] }
 serde = "1.0.217"
 bson = "2.13.0"
 futures = "0.3.31"
+axum = "0.8.1"
